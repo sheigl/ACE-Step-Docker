@@ -1,57 +1,63 @@
 version: '3.8'
 
 services:
-  ace-step-backend:
+  acestep-api:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
-    container_name: ace-step-backend
+      context: ../ACE-Step-1.5
+      dockerfile: Dockerfile
+    container_name: acestep-api
     ports:
       - "8001:8001"
     volumes:
-      - ./data:/app/ACE-Step-1.5/data
-      - ./models:/app/ACE-Step-1.5/models
+      - ../ACE-Step-1.5:/app
+      - ./models:/app/checkpoints
+      - ./data:/app/data
     environment:
-      - SYCL_CACHE_PERSISTENT=1
-      - SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=1
-      - PYTORCH_DEVICE=xpu
-      - TORCH_COMPILE_BACKEND=eager
-      - TOKENIZERS_PARALLELISM=false
-      - TORCHAUDIO_USE_BACKEND=ffmpeg
       - HOST=0.0.0.0
       - PORT=8001
-    # For Intel XPU GPU access  
-    devices:
-      - /dev/dri:/dev/dri
+      - ACESTEP_INIT_LLM=auto
+      - ACESTEP_NO_INIT=false
+    command: ["sh", "-c", "cd /app && uv run acestep --port 8001 --enable-api --backend pt --server-name 0.0.0.0"]
     restart: unless-stopped
+    networks:
+      - acestep-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
-    # Additional environment for better GPU support
-    environment:
-      - OMP_NUM_THREADS=4
-      - MKL_NUM_THREADS=4
 
-  ace-step-ui:
+  acestep-ui:
     build:
-      context: .
-      dockerfile: Dockerfile.ui
-    container_name: ace-step-ui
+      context: ../ace-step-ui
+      dockerfile: Dockerfile
+    container_name: acestep-ui
     ports:
       - "3000:3000"
+    volumes:
+      - ../ace-step-ui:/app
+      - ./ui-data:/app/data
     environment:
-      - ACESTEP_API_URL=http://ace-step-backend:8001
       - PORT=3000
       - NODE_ENV=production
-      - DATABASE_PATH=./server/data/acestep.db
+      - ACESTEP_API_URL=http://acestep-api:8001
+      - DATABASE_PATH=/app/data/acestep.db
+      - AUDIO_DIR=/app/public/audio
+      - FRONTEND_URL=http://localhost:3000
+      - VITE_API_URL=http://localhost:3000
+      - JWT_SECRET=ace-step-ui-secret
     depends_on:
-      ace-step-backend:
+      acestep-api:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - acestep-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+networks:
+  acestep-network:
+    driver: bridge
