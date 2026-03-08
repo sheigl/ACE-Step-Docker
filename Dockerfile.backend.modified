@@ -1,0 +1,39 @@
+FROM ghcr.io/astral-sh/uv:debian
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt update && apt install -y git curl wget
+
+# Clone the ACE-Step repository
+RUN git clone https://github.com/ace-step/ACE-Step-1.5
+
+WORKDIR /app/ACE-Step-1.5
+
+# Create virtual environment
+RUN uv venv --python 3.11
+RUN .venv/bin/uv pip install --python .venv/bin/python -r requirements-xpu.txt
+
+# Install the package in development mode
+RUN .venv/bin/uv pip install --python .venv/bin/python -e .
+
+# Install additional XPU-specific packages
+RUN .venv/bin/uv pip install --python .venv/bin/python --pre torch torchaudio torchvision --index-url https://download.pytorch.org/whl/nightly/xpu
+
+# Copy necessary files
+COPY ./start_api_server_xpu.sh .
+COPY ./start_gradio_ui_xpu.sh .
+
+# Set environment variables for XPU
+ENV SYCL_CACHE_PERSISTENT=1
+ENV SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=1
+ENV PYTORCH_DEVICE=xpu
+ENV TORCH_COMPILE_BACKEND=eager
+ENV TOKENIZERS_PARALLELISM=false
+ENV TORCHAUDIO_USE_BACKEND=ffmpeg
+
+# Expose the API port
+EXPOSE 8001
+
+# Set the default command to start the API server
+CMD ["bash", "-c", "./start_api_server_xpu.sh"]

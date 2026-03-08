@@ -19,9 +19,9 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | b
 ENV NVM_DIR=/root/.nvm
 
 WORKDIR /app/ace-step-ui
-COPY /setup.sh .
+COPY /modified_setup.sh ./setup.sh
 COPY /start.sh .
 # install node
-RUN bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION && ./setup.sh"
+RUN bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION && ./modified_setup.sh"
 
 CMD [ "bash", "-c", "./start.sh" ] 

@@ -15,4 +15,4 @@ RUN uv pip install --python .venv/bin/python --pre torch torchaudio torchvision 
 COPY ./start_api_server_xpu.sh .
 COPY ./start_gradio_ui_xpu.sh .
 
-CMD [ "bash", "-c", "./start_gradio_ui_xpu.sh" ]
+CMD [ "bash", "-c", "./start_api_server_xpu.sh" ]
